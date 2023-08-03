@@ -1,4 +1,4 @@
-package com.example.bet_game;
+package com.example.betgame;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bet Game</title>
+</head>
+<body>
+<label for="betInput">Enter your bet:</label>
+<input type="number" id="betInput">
+<br>
+<label for="playerNumberInput">Enter your player number:</label>
+<input type="number" id="playerNumberInput">
+<br>
+<button onclick="sendBet()">Play</button>
+<br>
+<div id="result"></div>
+
+<script>
+    let ws;
+
+    function initWebSocket() {
+        const webSocketURL = 'ws://localhost:8080/play';
+        ws = new WebSocket(webSocketURL);
+
+        ws.onopen = function (event) {
+            console.log('WebSocket connection established.');
+        };
+
+        ws.onmessage = function (event) {
+            const resultElement = document.getElementById('result');
+            const data = JSON.parse(event.data);
+            console.log(data);
+
+            if (data.error) {
+                resultElement.innerText = "Error: " + data.message;
+            } else {
+                resultElement.innerText = "Game result: " + data.win + "\n" + "Generated number: " + data.number;
+            }
+        };
+
+        ws.onclose = function (event) {
+            console.log('WebSocket connection closed.');
+        };
+    }
+
+    function sendBet() {
+        const bet = document.getElementById('betInput').value;
+        const playerNumber = document.getElementById('playerNumberInput').value;
+        const data = {
+            bet: bet,
+            playerNumber: playerNumber
+        };
+        ws.send(JSON.stringify(data));
+    }
+
+    window.onload = function () {
+        initWebSocket();
+    };
+</script>
+</body>
+</html>
