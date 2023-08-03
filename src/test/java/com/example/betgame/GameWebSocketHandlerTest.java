@@ -3,7 +3,6 @@ package com.example.betgame;
 import com.example.betgame.handlers.GameWebSocketHandler;
 import com.example.betgame.model.GameResult;
 import com.example.betgame.service.GameService;
-import com.example.betgame.service.GameServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -81,5 +79,90 @@ public class GameWebSocketHandlerTest {
         verify(webSocketSession, times(1)).sendMessage(any(TextMessage.class));
 
     }
+
+    @Test
+    public void testHandleMessage_InvalidInput() throws Exception {
+        double invalidBet = -10.0;
+        int invalidPlayerNumber = 0;
+        Map<String, Object> invalidMessageData = new HashMap<>();
+        invalidMessageData.put("bet", invalidBet);
+        invalidMessageData.put("playerNumber", invalidPlayerNumber);
+        String invalidPayload = objectMapper.writeValueAsString(invalidMessageData);
+        TextMessage invalidInputMessage = new TextMessage(invalidPayload);
+
+        GameWebSocketHandler gameWebSocketHandler = new GameWebSocketHandler(mock(GameService.class));
+        WebSocketSession webSocketSession = mock(WebSocketSession.class);
+        ArgumentCaptor<TextMessage> textMessageCaptor = ArgumentCaptor.forClass(TextMessage.class);
+        gameWebSocketHandler.handleMessage(webSocketSession, invalidInputMessage);
+
+        Map<String, Object> expectedErrorData = new HashMap<>();
+        expectedErrorData.put("error", "Invalid input");
+        expectedErrorData.put("message", "bet and playerNumber should be valid values");
+        String expectedErrorJson = objectMapper.writeValueAsString(expectedErrorData);
+
+        verify(webSocketSession).sendMessage(textMessageCaptor.capture());
+        String actualErrorJson = textMessageCaptor.getValue().getPayload();
+
+        JsonNode actualErrorNode = objectMapper.readTree(actualErrorJson);
+        JsonNode expectedErrorNode = objectMapper.readTree(expectedErrorJson);
+        assertThat(actualErrorNode).isEqualTo(expectedErrorNode);
+    }
+
+    @Test
+    public void testHandleMessage_NullInput() throws Exception {
+        Double nullBet = null;
+        Integer nullPlayerNumber = null;
+        Map<String, Object> nullMessageData = new HashMap<>();
+        nullMessageData.put("bet", nullBet);
+        nullMessageData.put("playerNumber", nullPlayerNumber);
+        String nullPayload = objectMapper.writeValueAsString(nullMessageData);
+        TextMessage nullInputMessage = new TextMessage(nullPayload);
+
+        GameWebSocketHandler gameWebSocketHandler = new GameWebSocketHandler(mock(GameService.class));
+        WebSocketSession webSocketSession = mock(WebSocketSession.class);
+        ArgumentCaptor<TextMessage> textMessageCaptor = ArgumentCaptor.forClass(TextMessage.class);
+        gameWebSocketHandler.handleMessage(webSocketSession, nullInputMessage);
+
+        Map<String, Object> expectedErrorData = new HashMap<>();
+        expectedErrorData.put("error", "Invalid input");
+        expectedErrorData.put("message", "bet and playerNumber should not be null");
+        String expectedErrorJson = objectMapper.writeValueAsString(expectedErrorData);
+
+        verify(webSocketSession).sendMessage(textMessageCaptor.capture());
+        String actualErrorJson = textMessageCaptor.getValue().getPayload();
+
+        JsonNode actualErrorNode = objectMapper.readTree(actualErrorJson);
+        JsonNode expectedErrorNode = objectMapper.readTree(expectedErrorJson);
+        assertThat(actualErrorNode).isEqualTo(expectedErrorNode);
+    }
+
+    @Test
+    public void testHandleMessage_MissingRequiredKeys() throws Exception {
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("invalidKey", "invalidValue"); // No "bet" and "playerNumber" keys
+        String payload = objectMapper.writeValueAsString(messageData);
+        TextMessage inputMessage = new TextMessage(payload);
+
+        WebSocketSession webSocketSession = mock(WebSocketSession.class);
+        GameWebSocketHandler gameWebSocketHandler = new GameWebSocketHandler(mock(GameService.class));
+        gameWebSocketHandler.handleMessage(webSocketSession, inputMessage);
+
+        Map<String, Object> expectedResultData = new HashMap<>();
+        expectedResultData.put("error", "Invalid input (null values)");
+        expectedResultData.put("message", "bet and playerNumber are required fields");
+        String expectedResultJson = new ObjectMapper().writeValueAsString(expectedResultData);
+
+        ArgumentCaptor<TextMessage> textMessageCaptor = ArgumentCaptor.forClass(TextMessage.class);
+        verify(webSocketSession).sendMessage(textMessageCaptor.capture());
+        String actualResultJson = textMessageCaptor.getValue().getPayload();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode actualResultNode = objectMapper.readTree(actualResultJson);
+        JsonNode expectedResultNode = objectMapper.readTree(expectedResultJson);
+        assertThat(actualResultNode).isEqualTo(expectedResultNode);
+
+        verify(webSocketSession, times(1)).sendMessage(any(TextMessage.class));
+    }
+
 
 }
