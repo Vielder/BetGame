@@ -1,4 +1,4 @@
-# BetGame
+# Bet Game
 Test assignment:
 
 
